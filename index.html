@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>BLUSH & LASH // СИСТЕМА ЗАПИСИ</title>
+
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <!-- Google Fonts: JetBrains Mono + Inter / IBM Plex Sans for crisp NieR:Automata / YoRHa flat 2D aesthetic -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg-beige: #d1cdb8;
+      --bg-panel: #dad4be;
+      --bg-recessed: #c8c3ae;
+      --ink-dark: #454138;
+      --ink-muted: #7a7464;
+      --ink-light: #dad4be;
+      --border-line: #454138;
+      --border-subtle: rgba(69, 65, 56, 0.28);
+      --accent-rust: #9c4a38;
+    }
+
+    * {
+      box-sizing: border-box;
+      border-radius: 0 !important;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-beige);
+      color: var(--ink-dark);
+      font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-variant-numeric: lining-nums tabular-nums;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    .mono {
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    /* Subtle tactile scanline / paper grid texture (2D flat, zero 3D/glass) */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      background-image:
+        linear-gradient(to right, rgba(69, 65, 56, 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(69, 65, 56, 0.04) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    .app-container {
+      position: relative;
+      z-index: 2;
+      max-width: 460px;
+      margin: 0 auto;
+      padding: 12px 14px 128px;
+    }
+
+    /* Top YoRHa-style navigation bar */
+    .top-bar {
+      display: flex;
+      align-items: stretch;
+      justify-content: space-between;
+      border-bottom: 1.5px solid var(--ink-dark);
+      padding-bottom: 8px;
+      margin-bottom: 14px;
+      gap: 6px;
+    }
+
+    .top-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background: var(--ink-dark);
+      color: var(--bg-beige);
+      text-decoration: none;
+      border: 1px solid var(--ink-dark);
+    }
+
+    .top-tab-outline {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: transparent;
+      color: var(--ink-dark);
+      text-decoration: none;
+      border: 1px solid var(--ink-dark);
+      cursor: pointer;
+    }
+
+    .top-tab-outline:active, .top-tab:active {
+      background: var(--ink-dark);
+      color: var(--bg-beige);
+    }
+
+    .sq-dot {
+      width: 7px;
+      height: 7px;
+      background: currentColor;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    /* Category strip like "Restorative | Enhancement | Support | Key Items" */
+    .cat-strip {
+      display: flex;
+      gap: 14px;
+      overflow-x: auto;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      scrollbar-width: none;
+    }
+    .cat-strip::-webkit-scrollbar { display: none; }
+
+    .cat-btn {
+      background: none;
+      border: none;
+      padding: 2px 0;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ink-muted);
+      cursor: pointer;
+      white-space: nowrap;
+      position: relative;
+    }
+
+    .cat-btn.active {
+      color: var(--ink-dark);
+      font-weight: 700;
+    }
+
+    .cat-btn.active::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -4px;
+      height: 2px;
+      background: var(--ink-dark);
+    }
+
+    /* Section header with double horizontal rule like NieR UI */
+    .sec-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--ink-dark);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 6px 0;
+      margin-bottom: 10px;
+    }
+
+    .sec-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .sec-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: var(--ink-muted);
+    }
+
+    /* Left-accent double bar like NieR inventory frame */
+    .nier-frame {
+      position: relative;
+      padding-left: 10px;
+      margin-bottom: 20px;
+    }
+
+    .nier-frame::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: var(--ink-dark);
+    }
+
+    .nier-frame::after {
+      content: "";
+      position: absolute;
+      left: 6px;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: var(--ink-dark);
+    }
+
+    /* Service list rows - clean flat 2D selection bar */
+    .srv-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .srv-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 10px;
+      background: var(--bg-panel);
+      border: 1px solid transparent;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.12s ease, color 0.12s ease;
+    }
+
+    .srv-row:hover {
+      border-color: var(--border-subtle);
+    }
+
+    .srv-row.selected {
+      background: var(--ink-dark);
+      color: var(--bg-beige);
+    }
+
+    .srv-row-left {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .srv-cursor {
+      width: 9px;
+      height: 9px;
+      border: 1px solid currentColor;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .srv-row.selected .srv-cursor {
+      background: var(--bg-beige);
+    }
+
+    .srv-name {
+      font-size: 13.5px;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    .srv-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12.5px;
+      font-weight: 600;
+    }
+
+    .srv-dur {
+      font-size: 11px;
+      opacity: 0.72;
+    }
+
+    /* Selected item detail inspector box (like center panel in reference!) */
+    .detail-box {
+      margin-top: 10px;
+      background: var(--bg-panel);
+      border-top: 1.5px solid var(--ink-dark);
+      border-bottom: 1.5px solid var(--ink-dark);
+      padding: 12px;
+    }
+
+    .detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 6px;
+      margin-bottom: 8px;
+    }
+
+    .detail-title {
+      font-size: 16px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .detail-code {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .detail-desc {
+      font-size: 12.5px;
+      line-height: 1.45;
+      color: var(--ink-dark);
+      margin: 0 0 10px;
+    }
+
+    .detail-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 8px;
+      gap: 6px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+    }
+
+    .stat-label {
+      color: var(--ink-muted);
+      display: block;
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+
+    .stat-val {
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    /* Date strip */
+    .date-strip {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      margin-bottom: 10px;
+      scrollbar-width: none;
+    }
+    .date-strip::-webkit-scrollbar { display: none; }
+
+    .date-cell {
+      flex-shrink: 0;
+      width: 58px;
+      padding: 7px 4px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      color: var(--ink-dark);
+      text-align: center;
+      cursor: pointer;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .date-cell.selected {
+      background: var(--ink-dark);
+      color: var(--bg-beige);
+      border-color: var(--ink-dark);
+    }
+
+    .date-wd {
+      font-size: 10px;
+      text-transform: uppercase;
+      opacity: 0.75;
+    }
+
+    .date-num {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 2px 0;
+    }
+
+    .date-mon {
+      font-size: 10px;
+      opacity: 0.75;
+    }
+
+    /* Time slots grid (like Enhancement square grid in reference!) */
+    .slots-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .slot-cell {
+      padding: 9px 6px;
+      background: var(--bg-panel);
+      border: 1px solid var(--ink-dark);
+      color: var(--ink-dark);
+      font-family: 'IBM Plex Mono', monospace;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .slot-cell.selected {
+      background: var(--ink-dark);
+      color: var(--bg-beige);
+    }
+
+    .slot-cell.taken {
+      background: var(--bg-recessed);
+      border: 1px dashed var(--ink-muted);
+      color: var(--ink-muted);
+      cursor: not-allowed;
+    }
+
+    .slot-time {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .slot-status {
+      font-size: 9.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 2px;
+    }
+
+    /* Flat 2D form fields */
+    .field-group {
+      margin-bottom: 10px;
+    }
+
+    .field-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+    }
+
+    .flat-input {
+      width: 100%;
+      background: var(--bg-panel);
+      border: 1px solid var(--ink-dark);
+      padding: 10px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      color: var(--ink-dark);
+      outline: none;
+    }
+
+    .flat-input::placeholder {
+      color: var(--ink-muted);
+    }
+
+    .flat-input:focus {
+      background: #e3dec9;
+      box-shadow: inset 3px 0 0 var(--ink-dark);
+    }
+
+    .flat-input.error {
+      border-color: var(--accent-rust);
+      box-shadow: inset 3px 0 0 var(--accent-rust);
+    }
+
+    /* Direct master link strip */
+    .master-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 11px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      margin-top: 10px;
+      font-size: 12px;
+    }
+
+    .master-link-btn {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--bg-beige);
+      background: var(--ink-dark);
+      padding: 5px 10px;
+      text-decoration: none;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* Bottom fixed command bar (like [X] CONFIRM  [O] BACK) */
+    .bottom-dock {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 460px;
+      z-index: 30;
+      background: var(--bg-beige);
+      border-top: 1.5px solid var(--ink-dark);
+      padding: 10px 14px 14px;
+    }
+
+    .dock-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .dock-summary {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .dock-srv {
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+    }
+
+    .dock-meta {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .btn-confirm {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--ink-dark);
+      color: var(--bg-beige);
+      border: 1.5px solid var(--ink-dark);
+      padding: 11px 16px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn-confirm:active {
+      background: var(--bg-panel);
+      color: var(--ink-dark);
+    }
+
+    .key-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border: 1px solid currentColor;
+      font-size: 10px;
+      line-height: 1;
+    }
+
+    /* Flat 2D Modal Overlay */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: rgba(69, 65, 56, 0.62);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-box {
+      width: 100%;
+      max-width: 460px;
+      background: var(--bg-beige);
+      border-top: 2px solid var(--ink-dark);
+      padding: 14px 16px 24px;
+      max-height: 92vh;
+      overflow-y: auto;
+    }
+
+    .modal-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1.5px solid var(--ink-dark);
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+    }
+
+    .status-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+      margin-bottom: 12px;
+      background: var(--bg-panel);
+      border: 1px solid var(--ink-dark);
+    }
+
+    .status-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--border-subtle);
+      vertical-align: top;
+    }
+
+    .status-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .status-key {
+      color: var(--ink-muted);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      width: 38%;
+    }
+
+    .status-val {
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .sbp-box {
+      background: var(--bg-panel);
+      border: 1px solid var(--ink-dark);
+      padding: 11px;
+      margin-bottom: 14px;
+    }
+
+    .sbp-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: var(--bg-beige);
+      border: 1px solid var(--ink-dark);
+      padding: 8px 10px;
+      margin-top: 8px;
+    }
+
+    .btn-copy {
+      background: var(--ink-dark);
+      color: var(--bg-beige);
+      border: none;
+      padding: 6px 10px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+
+    .btn-full {
+      width: 100%;
+      justify-content: center;
+      padding: 13px 16px;
+    }
+
+    /* Toast */
+    #toast-box {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 60;
+      width: 92%;
+      max-width: 420px;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .toast-item {
+      background: var(--ink-dark);
+      color: var(--bg-beige);
+      border: 1px solid var(--bg-beige);
+      padding: 9px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11.5px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+
+    .toast-item.err {
+      background: var(--accent-rust);
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="toast-box"></div>
+
+  <main class="app-container">
+
+    <!-- Top Navigation Strip -->
+    <header class="top-bar">
+      <div class="top-tab">
+        <span class="sq-dot"></span>
+        <span>BLUSH &amp; LASH</span>
+      </div>
+
+      <div class="mono" style="font-size: 11px; display: flex; align-items: center; font-weight: 700;">
+        SLOTS: OPEN
+      </div>
+
+      <a href="https://t.me/dsdsyu" target="_blank" rel="noopener noreferrer" id="header-master-link" class="top-tab-outline">
+        <span>@DSDSYU</span>
+      </a>
+    </header>
+
+    <!-- Category Tabs (NieR sub-navigation style) -->
+    <nav class="cat-strip" aria-label="Категории услуг">
+      <button type="button" class="cat-btn active" data-filter="all">Все процедуры</button>
+      <button type="button" class="cat-btn" data-filter="lashes">Ресницы</button>
+      <button type="button" class="cat-btn" data-filter="brows">Брови</button>
+      <button type="button" class="cat-btn" data-filter="combo">Комплексы</button>
+    </nav>
+
+    <!-- 01. SERVICES LIST + INSPECTOR -->
+    <section class="nier-frame" id="services-section">
+      <div class="sec-head">
+        <div class="sec-title">
+          <span class="sq-dot"></span>
+          <span>01 // ВЫБОР ПРОЦЕДУРЫ</span>
+        </div>
+        <span class="sec-meta" id="srv-count-meta">07 ITEMS</span>
+      </div>
+
+      <div class="srv-list" id="services-list"></div>
+
+      <!-- Flat 2D Item Spec Box (like center panel in reference) -->
+      <div class="detail-box" id="service-inspector">
+        <div class="detail-header">
+          <div class="detail-title" id="insp-title">МОКРЫЙ ЭФФЕКТ / 2D</div>
+          <div class="detail-code" id="insp-code">ID: LASH-02</div>
+        </div>
+        <p class="detail-desc" id="insp-desc">
+          Трендовая текстура с эффектом влажных ресничек или объём 2D.
+        </p>
+        <div class="detail-stats">
+          <div>
+            <span class="stat-label">СТОИМОСТЬ</span>
+            <span class="stat-val" id="insp-price">2 800 ₽</span>
+          </div>
+          <div>
+            <span class="stat-label">ВРЕМЯ</span>
+            <span class="stat-val" id="insp-dur">2.5 Ч</span>
+          </div>
+          <div>
+            <span class="stat-label">БРОНЬ СБП</span>
+            <span class="stat-val">500 ₽</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02. DATE & TIME MATRIX -->
+    <section class="nier-frame" id="datetime-section">
+      <div class="sec-head">
+        <div class="sec-title">
+          <span class="sq-dot"></span>
+          <span>02 // ДАТА И СЛОТ</span>
+        </div>
+        <span class="sec-meta" id="selected-date-label">—</span>
+      </div>
+
+      <div class="date-strip" id="date-strip"></div>
+      <div class="slots-grid" id="slots-grid"></div>
+    </section>
+
+    <!-- 03. CLIENT DATA -->
+    <section class="nier-frame" id="client-section">
+      <div class="sec-head">
+        <div class="sec-title">
+          <span class="sq-dot"></span>
+          <span>03 // ДАННЫЕ КЛИЕНТА</span>
+        </div>
+        <span class="sec-meta">REQ: NAME, TG</span>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="client-name">
+          <span>Имя клиента</span>
+          <span class="mono" style="color: var(--ink-muted);">[ОБЯЗАТЕЛЬНО]</span>
+        </label>
+        <input type="text" id="client-name" class="flat-input" placeholder="Полина" autocomplete="name" />
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="client-username">
+          <span>Telegram @username</span>
+          <span class="mono" style="color: var(--ink-muted);">[ОБЯЗАТЕЛЬНО]</span>
+        </label>
+        <input type="text" id="client-username" class="flat-input" placeholder="@username" autocomplete="username" />
+      </div>
+
+      <div class="field-group" style="margin-bottom: 0;">
+        <label class="field-label" for="client-note">
+          <span>Примечание к визиту</span>
+          <span class="mono" style="color: var(--ink-muted);">[ОПЦИЯ]</span>
+        </label>
+        <input type="text" id="client-note" class="flat-input" placeholder="Снятие старого покрытия / изгиб" />
+      </div>
+
+      <div class="master-strip">
+        <span>Вопрос мастеру напрямую:</span>
+        <a href="https://t.me/dsdsyu" target="_blank" rel="noopener noreferrer" id="footer-master-link" class="master-link-btn">
+          @DSDSYU →
+        </a>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Fixed Bottom Command Dock -->
+  <footer class="bottom-dock">
+    <div class="dock-inner">
+      <div class="dock-summary">
+        <div class="dock-srv" id="dock-service-name">МОКРЫЙ ЭФФЕКТ / 2D</div>
+        <div class="dock-meta" id="dock-meta">2 800 ₽ // ЗАВТРА · 13:30</div>
+      </div>
+
+      <button type="button" id="open-booking-btn" class="btn-confirm">
+        <span class="key-badge">✓</span>
+        <span>ЗАПИСАТЬСЯ</span>
+      </button>
+    </div>
+  </footer>
+
+  <!-- SBP Confirmation Modal -->
+  <div class="modal-overlay" id="sbp-modal">
+    <div class="modal-box">
+      <div class="modal-top">
+        <div>
+          <div class="mono" style="font-size: 11px; font-weight: 700;" id="freeze-timer">
+            [РЕЗЕРВ СЛОТА: 30:00]
+          </div>
+          <div style="font-size: 17px; font-weight: 700; text-transform: uppercase; margin-top: 2px;">
+            ПОДТВЕРЖДЕНИЕ ЗАПИСИ
+          </div>
+        </div>
+        <button type="button" id="close-modal-btn" class="top-tab-outline" aria-label="Закрыть">
+          <span>✕ ЗАКРЫТЬ</span>
+        </button>
+      </div>
+
+      <table class="status-table">
+        <tbody>
+          <tr>
+            <td class="status-key">УСЛУГА</td>
+            <td class="status-val" id="m-service">—</td>
+          </tr>
+          <tr>
+            <td class="status-key">ДЛИТЕЛЬНОСТЬ</td>
+            <td class="status-val mono" id="m-dur">—</td>
+          </tr>
+          <tr>
+            <td class="status-key">ДАТА / ВРЕМЯ</td>
+            <td class="status-val mono" id="m-datetime">—</td>
+          </tr>
+          <tr>
+            <td class="status-key">КЛИЕНТ</td>
+            <td class="status-val mono" id="m-client">—</td>
+          </tr>
+          <tr id="m-note-row" style="display: none;">
+            <td class="status-key">ПРИМЕЧАНИЕ</td>
+            <td class="status-val" id="m-note">—</td>
+          </tr>
+          <tr>
+            <td class="status-key">ПОЛНАЯ ЦЕНА</td>
+            <td class="status-val mono" id="m-full-price">2 800 ₽</td>
+          </tr>
+          <tr>
+            <td class="status-key">ПРЕДОПЛАТА СБП</td>
+            <td class="status-val mono" style="color: var(--accent-rust);">500 ₽</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="sbp-box">
+        <div class="mono" style="font-size: 11px; font-weight: 700; text-transform: uppercase;">
+          ПЕРЕВОД ПО СБП // Т-БАНК / СБЕР
+        </div>
+        <p style="font-size: 12px; line-height: 1.4; margin: 6px 0 0;">
+          Переведите <strong>500 ₽</strong> по номеру ниже и отправьте чек мастеру
+          <a href="https://t.me/dsdsyu" target="_blank" rel="noopener noreferrer" id="modal-master-link" style="color: var(--ink-dark); font-weight: 700;">@dsdsyu</a>:
+        </p>
+
+        <div class="sbp-row">
+          <span class="mono" style="font-size: 14px; font-weight: 700;" id="sbp-phone">+7 (912) 000-00-00</span>
+          <button type="button" id="copy-phone-btn" class="btn-copy">КОПИРОВАТЬ</button>
+        </div>
+      </div>
+
+      <button type="button" id="send-receipt-btn" class="btn-confirm btn-full">
+        <span class="key-badge">→</span>
+        <span>ОТПРАВИТЬ ЧЕК @DSDSYU</span>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const MASTER_TELEGRAM_USERNAME = 'dsdsyu';
+    const SBP_PHONE_NUMBER = '+7 (912) 000-00-00';
+    const PREPAYMENT_RUB = 500;
+
+    const SERVICES = [
+      {
+        id: 'LASH-01',
+        category: 'lashes',
+        shortName: 'Классика / 1.5D',
+        name: 'Наращивание ресниц · Классика / 1.5D',
+        duration: '2 ч',
+        price: 2400,
+        desc: 'Мягкая натуральная густота и деликатный завиток без утяжеления.'
+      },
+      {
+        id: 'LASH-02',
+        category: 'lashes',
+        shortName: 'Мокрый эффект / 2D',
+        name: 'Наращивание ресниц · Мокрый эффект / 2D',
+        duration: '2.5 ч',
+        price: 2800,
+        desc: 'Трендовая текстура с эффектом влажных ресничек или объём 2D.'
+      },
+      {
+        id: 'LASH-03',
+        category: 'lashes',
+        shortName: 'Лучи / Аниме-эффект',
+        name: 'Лучи / Аниме-эффект',
+        duration: '2.5 ч',
+        price: 3100,
+        desc: 'Выразительные заострённые лучики для открытого кукольного взгляда.'
+      },
+      {
+        id: 'LASH-04',
+        category: 'lashes',
+        shortName: 'Ламинирование + ботокс',
+        name: 'Ламинирование ресниц + ботокс',
+        duration: '1 ч',
+        price: 1900,
+        desc: 'Глубокое питание, окрашивание и естественный лифтинг своих ресниц.'
+      },
+      {
+        id: 'BROW-01',
+        category: 'brows',
+        shortName: 'Архитектура бровей',
+        name: 'Архитектура и окрашивание бровей',
+        duration: '45 мин',
+        price: 1300,
+        desc: 'Построение формы по чертам лица, коррекция и стойкий оттенок.'
+      },
+      {
+        id: 'BROW-02',
+        category: 'brows',
+        shortName: 'Долговременная укладка',
+        name: 'Долговременная укладка бровей + коррекция',
+        duration: '1 ч',
+        price: 1800,
+        desc: 'Послушные воздушные волоски с уходом и деликатной коррекцией.'
+      },
+      {
+        id: 'COMB-01',
+        category: 'combo',
+        shortName: 'Комплекс: Лами + брови',
+        name: 'Комплекс: Лами ресниц + оформление бровей',
+        duration: '1.5 ч',
+        price: 2900,
+        desc: 'Полное обновление взгляда за один комфортный визит.'
+      }
+    ];
+
+    const SLOTS = [
+      { time: '10:30', taken: false },
+      { time: '12:00', taken: true },
+      { time: '13:30', taken: false },
+      { time: '15:00', taken: true },
+      { time: '16:00', taken: false },
+      { time: '19:00', taken: false }
+    ];
+
+    const state = {
+      filter: 'all',
+      serviceId: 'LASH-02',
+      dayIndex: 1,
+      time: '13:30',
+      clientName: '',
+      clientUsername: '',
+      clientNote: '',
+      timerSec: 30 * 60,
+      timerId: null
+    };
+
+    const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+
+    function initTelegram() {
+      if (!tg) return;
+      try {
+        tg.ready();
+        tg.expand();
+        if (tg.setHeaderColor) tg.setHeaderColor('#d1cdb8');
+        if (tg.setBackgroundColor) tg.setBackgroundColor('#d1cdb8');
+
+        const u = tg.initDataUnsafe && tg.initDataUnsafe.user;
+        if (u) {
+          const full = [u.first_name, u.last_name].filter(Boolean).join(' ');
+          if (full) {
+            state.clientName = full;
+            document.getElementById('client-name').value = full;
+          }
+          if (u.username) {
+            state.clientUsername = '@' + u.username;
+            document.getElementById('client-username').value = '@' + u.username;
+          }
+        }
+      } catch (_) {}
+    }
+
+    function haptic(type = 'light') {
+      try {
+        if (tg && tg.HapticFeedback) {
+          if (type === 'success') tg.HapticFeedback.notificationOccurred('success');
+          else tg.HapticFeedback.impactOccurred(type);
+        }
+      } catch (_) {}
+    }
+
+    function formatRub(n) {
+      return n.toLocaleString('ru-RU') + ' ₽';
+    }
+
+    function showToast(text, isErr = false) {
+      const box = document.getElementById('toast-box');
+      const item = document.createElement('div');
+      item.className = 'toast-item' + (isErr ? ' err' : '');
+      item.textContent = (isErr ? '[ERR] ' : '[SYS] ') + text;
+      box.appendChild(item);
+      setTimeout(() => item.remove(), 2400);
+    }
+
+    function getCurrentService() {
+      return SERVICES.find(s => s.id === state.serviceId) || SERVICES[1];
+    }
+
+    function renderServices() {
+      const listEl = document.getElementById('services-list');
+      const items = state.filter === 'all'
+        ? SERVICES
+        : SERVICES.filter(s => s.category === state.filter);
+
+      document.getElementById('srv-count-meta').textContent =
+        String(items.length).padStart(2, '0') + ' ITEMS';
+
+      listEl.innerHTML = items.map(srv => {
+        const selected = srv.id === state.serviceId;
+        return `
+          <div class="srv-row ${selected ? 'selected' : ''}" data-id="${srv.id}" role="radio" aria-checked="${selected}">
+            <div class="srv-row-left">
+              <span class="srv-cursor"></span>
+              <span class="srv-name">${srv.shortName}</span>
+            </div>
+            <div class="srv-right">
+              <span class="srv-dur">${srv.duration}</span>
+              <span>${formatRub(srv.price)}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      listEl.querySelectorAll('.srv-row').forEach(row => {
+        row.addEventListener('click', () => {
+          haptic('light');
+          state.serviceId = row.dataset.id;
+          renderServices();
+          syncInspectorAndDock();
+        });
+      });
+
+      syncInspectorAndDock();
+    }
+
+    const days = [];
+    function initDays() {
+      const wdNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+      const monNames = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+      const now = new Date();
+      days.length = 0;
+
+      for (let i = 0; i < 10; i++) {
+        const d = new Date(now);
+        d.setDate(now.getDate() + i);
+        const wd = wdNames[d.getDay()];
+        const num = d.getDate();
+        const mon = monNames[d.getMonth()];
+        days.push({
+          idx: i,
+          wd: i === 0 ? 'СЕГ' : wd,
+          num,
+          mon,
+          full: `${wd}, ${num} ${mon}`,
+          short: i === 0 ? `СЕГОДНЯ` : i === 1 ? `ЗАВТРА` : `${wd.toUpperCase()} ${num} ${mon.toUpperCase()}`
+        });
+      }
+    }
+
+    function renderDatesAndSlots() {
+      const strip = document.getElementById('date-strip');
+      strip.innerHTML = days.map(d => {
+        const active = d.idx === state.dayIndex;
+        return `
+          <button type="button" class="date-cell ${active ? 'selected' : ''}" data-day="${d.idx}">
+            <div class="date-wd">${d.wd}</div>
+            <div class="date-num">${d.num}</div>
+            <div class="date-mon">${d.mon}</div>
+          </button>
+        `;
+      }).join('');
+
+      strip.querySelectorAll('.date-cell').forEach(btn => {
+        btn.addEventListener('click', () => {
+          haptic('light');
+          state.dayIndex = Number(btn.dataset.day);
+          renderDatesAndSlots();
+          syncInspectorAndDock();
+        });
+      });
+
+      const curDay = days[state.dayIndex] || days[1];
+      document.getElementById('selected-date-label').textContent = curDay.full.toUpperCase();
+
+      const grid = document.getElementById('slots-grid');
+      grid.innerHTML = SLOTS.map(s => {
+        if (s.taken) {
+          return `
+            <div class="slot-cell taken" aria-disabled="true">
+              <div class="slot-time" style="text-decoration: line-through;">${s.time}</div>
+              <div class="slot-status">ЗАНЯТО</div>
+            </div>
+          `;
+        }
+        const active = s.time === state.time;
+        return `
+          <button type="button" class="slot-cell ${active ? 'selected' : ''}" data-time="${s.time}">
+            <div class="slot-time">${s.time}</div>
+            <div class="slot-status">${active ? '[ВЫБРАНО]' : 'СВОБОДНО'}</div>
+          </button>
+        `;
+      }).join('');
+
+      grid.querySelectorAll('.slot-cell:not(.taken)').forEach(btn => {
+        btn.addEventListener('click', () => {
+          haptic('light');
+          state.time = btn.dataset.time;
+          renderDatesAndSlots();
+          syncInspectorAndDock();
+        });
+      });
+    }
+
+    function syncInspectorAndDock() {
+      const srv = getCurrentService();
+      const d = days[state.dayIndex] || days[1];
+
+      document.getElementById('insp-title').textContent = srv.name;
+      document.getElementById('insp-code').textContent = `ID: ${srv.id}`;
+      document.getElementById('insp-desc').textContent = srv.desc;
+      document.getElementById('insp-price').textContent = formatRub(srv.price);
+      document.getElementById('insp-dur').textContent = srv.duration.toUpperCase();
+
+      document.getElementById('dock-service-name').textContent = srv.shortName;
+      document.getElementById('dock-meta').textContent = `${formatRub(srv.price)} // ${d.short} · ${state.time}`;
+    }
+
+    function startTimer() {
+      if (state.timerId) clearInterval(state.timerId);
+      state.timerSec = 30 * 60 - 1;
+      updateTimerText();
+      state.timerId = setInterval(() => {
+        if (state.timerSec > 0) {
+          state.timerSec--;
+          updateTimerText();
+        } else {
+          clearInterval(state.timerId);
+        }
+      }, 1000);
+    }
+
+    function updateTimerText() {
+      const m = String(Math.floor(state.timerSec / 60)).padStart(2, '0');
+      const s = String(state.timerSec % 60).padStart(2, '0');
+      document.getElementById('freeze-timer').textContent = `[РЕЗЕРВ СЛОТА: ${m}:${s}]`;
+    }
+
+    function openModal() {
+      const srv = getCurrentService();
+      const d = days[state.dayIndex] || days[1];
+
+      document.getElementById('m-service').textContent = srv.name;
+      document.getElementById('m-dur').textContent = srv.duration;
+      document.getElementById('m-datetime').textContent = `${d.full} · ${state.time}`;
+      document.getElementById('m-client').textContent = `${state.clientName} (${state.clientUsername})`;
+      document.getElementById('m-full-price').textContent = formatRub(srv.price);
+      document.getElementById('sbp-phone').textContent = SBP_PHONE_NUMBER;
+
+      const noteRow = document.getElementById('m-note-row');
+      if (state.clientNote) {
+        document.getElementById('m-note').textContent = state.clientNote;
+        noteRow.style.display = 'table-row';
+      } else {
+        noteRow.style.display = 'none';
+      }
+
+      startTimer();
+      document.getElementById('sbp-modal').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('sbp-modal').classList.remove('open');
+      if (state.timerId) clearInterval(state.timerId);
+    }
+
+    function buildTelegramMessage() {
+      const srv = getCurrentService();
+      const d = days[state.dayIndex] || days[1];
+      const lines = [
+        'Новая запись в студию BLUSH & LASH',
+        '',
+        `Услуга: ${srv.name} (${srv.duration})`,
+        `Дата и время: ${d.full} в ${state.time}`,
+        `Клиент: ${state.clientName} (${state.clientUsername})`
+      ];
+      if (state.clientNote) lines.push(`Примечание: ${state.clientNote}`);
+      lines.push('');
+      lines.push(`Стоимость: ${formatRub(srv.price)}`);
+      lines.push(`Предоплата СБП: ${formatRub(PREPAYMENT_RUB)}`);
+      lines.push('Чек об оплате прикрепляю ниже:');
+      return lines.join('\n');
+    }
+
+    function copyText(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (_) {}
+      document.body.removeChild(ta);
+      return ok;
+    }
+
+    function openMasterDirect(e) {
+      if (e) e.preventDefault();
+      haptic('light');
+      const clean = MASTER_TELEGRAM_USERNAME.replace(/^@/, '');
+      const url = `https://t.me/${clean}`;
+      if (tg && tg.openTelegramLink) {
+        try { tg.openTelegramLink(url); return; } catch (_) {}
+      }
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+
+    window.onload = function () {
+      initTelegram();
+      initDays();
+      renderServices();
+      renderDatesAndSlots();
+      syncInspectorAndDock();
+
+      ['header-master-link', 'footer-master-link', 'modal-master-link'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('click', openMasterDirect);
+      });
+
+      document.querySelectorAll('.cat-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          haptic('light');
+          state.filter = btn.dataset.filter;
+          document.querySelectorAll('.cat-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.filter === state.filter);
+          });
+          renderServices();
+        });
+      });
+
+      document.getElementById('open-booking-btn').addEventListener('click', () => {
+        const nameEl = document.getElementById('client-name');
+        const userEl = document.getElementById('client-username');
+        const noteEl = document.getElementById('client-note');
+
+        state.clientName = nameEl.value.trim();
+        state.clientUsername = userEl.value.trim();
+        state.clientNote = noteEl.value.trim();
+
+        nameEl.classList.remove('error');
+        userEl.classList.remove('error');
+
+        let err = false;
+        if (!state.clientName) { nameEl.classList.add('error'); err = true; }
+        if (!state.clientUsername) { userEl.classList.add('error'); err = true; }
+
+        if (err) {
+          haptic('medium');
+          showToast('ЗАПОЛНИТЕ ИМЯ И TELEGRAM @USERNAME', true);
+          document.getElementById('client-section').scrollIntoView({ behavior: 'smooth' });
+          (!state.clientName ? nameEl : userEl).focus();
+          return;
+        }
+
+        if (!state.clientUsername.startsWith('@') && !state.clientUsername.startsWith('+')) {
+          state.clientUsername = '@' + state.clientUsername;
+          userEl.value = state.clientUsername;
+        }
+
+        haptic('success');
+        openModal();
+      });
+
+      document.getElementById('close-modal-btn').addEventListener('click', closeModal);
+      document.getElementById('sbp-modal').addEventListener('click', e => {
+        if (e.target === document.getElementById('sbp-modal')) closeModal();
+      });
+
+      document.getElementById('copy-phone-btn').addEventListener('click', () => {
+        if (copyText(SBP_PHONE_NUMBER)) {
+          haptic('success');
+          showToast('НОМЕР СБП СКОПИРОВАН');
+        } else {
+          showToast('ОШИБКА КОПИРОВАНИЯ', true);
+        }
+      });
+
+      document.getElementById('send-receipt-btn').addEventListener('click', () => {
+        haptic('success');
+        const clean = MASTER_TELEGRAM_USERNAME.replace(/^@/, '');
+        const encoded = encodeURIComponent(buildTelegramMessage());
+        const url = `https://t.me/${clean}?text=${encoded}`;
+
+        if (tg && tg.openTelegramLink) {
+          try { tg.openTelegramLink(url); return; } catch (_) {}
+        }
+        window.open(url, '_blank', 'noopener,noreferrer');
+      });
+    };
+  </script>
+</body>
+</html>
